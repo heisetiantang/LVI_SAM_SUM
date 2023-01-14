@@ -1,0 +1,6 @@
+
+
+evo_ape tum   1.txt 2.txt  -r full -va --save_results 路径
+evo_rpe tum   1.txt 2.txt  -r full -va --save_results 路径
+
+evo_res results/*.zip -p --save_table results/table.csv

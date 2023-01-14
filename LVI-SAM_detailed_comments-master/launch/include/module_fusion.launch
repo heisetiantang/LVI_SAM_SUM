@@ -1,0 +1,16 @@
+<launch>
+  <!-- <arg name="door_02.bag" default="/home/gjm/door_02.bag" /> -->
+   
+  <node pkg="camera_lidar_fusion" name="fusion" type="fusion" output="screen">
+    <param name="camera_topic"     type="str" value="/camera/color/image_raw/compressed" />
+    <param name="lidar_topic"      type="str" value="/lvi_sam/lidar/deskew/cloud_deskewed" />
+    <param name="intrinsic_path"        value="$(find camera_lidar_fusion)/data/parameters/intrinsic.txt" />
+    <param name="extrinsic_path"        value="$(find camera_lidar_fusion)/data/parameters/extrinsic.txt" />
+  </node>
+
+  <!-- <node name="rviz" pkg="rviz" type="rviz" required="false" args="-d $(find camera_lidar_fusion)/launch/colored_cloud.rviz" /> -->
+
+  <!-- <node name="playbag" pkg="rosbag" type="play" args="- -clock $(arg door_02.bag)" /> -->
+  
+
+</launch>
