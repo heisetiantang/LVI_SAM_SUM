@@ -377,10 +377,10 @@ void get_cloud_mul ( const pcl::PointCloud<PointXYZIRT> new_laserCloudin_mul  , 
                     laserCloudScans_Ring_vector[scanID].points.push_back(new_laserCloudin_mul.points[j]);
                     ring_point_num[scanID] ++;
     }
-    ROS_INFO("N_points= %d",N_points);
+    // ROS_INFO("N_points= %d",N_points);
    //输出ring_point_num
    for (int i = 0;i < N_average ;i ++){
-    ROS_INFO("ring_point_num[%d]= %d",i,ring_point_num[i]);
+    // ROS_INFO("ring_point_num[%d]= %d",i,ring_point_num[i]);
     
    }
     
