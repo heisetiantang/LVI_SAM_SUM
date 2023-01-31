@@ -383,7 +383,7 @@ public:
         }
 
         // map_area =msg->area;
-    //    map_changeNumber=msg->changeNumber;
+        //    map_changeNumber=msg->changeNumber;
         map_environmentComplexity=msg->environmentComplexity;
         map_resolution_frames=  msg->resolution_frames;
         // map_num_clound_size=msg->num_clound_size;
@@ -419,39 +419,50 @@ public:
         //         confidence_num_surf = 2*e/(1+sqrt(    ( exp(sqrt(1/SurfSizeSum_last)) -exp(-sqrt(1/SurfSizeSum_last)) )    /  ( exp(sqrt(1/SurfSizeSum_last)) +  exp(-sqrt(1/SurfSizeSum_last)) )                                 ) );        
         // }
         
-        //方案B
-            int Corner_last = laserCloudOri_CornerSizeSum[laserCloudOri_SizeSum];
-            int Surf_last = laserCloudOri_SurfSizeSum[laserCloudOri_SizeSum];
-             //当前帧数目
-            int size_corner_vector_tmp= laserCloudOri_CornerSizeSum.size();
-            int size_surf_vector_tmp= laserCloudOri_SurfSizeSum.size();
+        if (laserCloudOri_CornerSizeSum.empty() && laserCloudOri_SurfSizeSum.empty() ) return;
+            // ROS_INFO("aaaaaaaaaaaa");
+            //方案B
+            //输出laserCloudOri_CornerSizeSum中的第一个元素
+            std::vector<int>::iterator first_Corner = laserCloudOri_CornerSizeSum.begin();
+            std::vector<int>::iterator first_surf = laserCloudOri_SurfSizeSum.begin();
 
-            // ROS_INFO("Corner_last: %d",Corner_last);
-            // ROS_INFO("Surf_last: %d",Surf_last);
+            //最新的角点数目
+            int Corner_last =*first_Corner;
+            int Surf_last = *first_surf;
+             //当前帧数目
+            // int size_corner_vector_tmp= laserCloudOri_CornerSizeSum.size();
+            // int size_surf_vector_tmp= laserCloudOri_SurfSizeSum.size();
+            // ROS_INFO("aaaaaaaaSurf_last: %d",Surf_last);
+            // ROS_INFO("aaaaaaaaaaCorner_last: %d",Corner_last);
+            //     ROS_INFO("laserCloudOri_SizeSum: %d",laserCloudOri_SizeSum-1);
             // ROS_INFO("size_corner_vector_tmp: %d",size_corner_vector_tmp);
             // ROS_INFO("size_surf_vector_tmp: %d",size_surf_vector_tmp);
-
-
         //滑窗计算方式
-        //当容器内元素数目小于10时增添元素，大于滑窗大小时，删除最早的元素
-        if (laserCloudOri_CornerSizeSum.size()<=10 ||  laserCloudOri_SurfSizeSum.size()<=10)
+          //向滑窗中添加最新的元素
+            laserCloudOri_Corner_last.push_back(Corner_last);
+            laserCloudOri_Surf_last.push_back(Surf_last);
+        //当滑窗容器内元素数目小于10时增添元素不删除，大于滑窗大小时，添加，删除最早的元素
+        if (laserCloudOri_Corner_last.size()<=10 ||  laserCloudOri_Surf_last.size()<=10)
         {
             // ROS_INFO("QIDON");
            //向滑窗中添加最新的元素
-            laserCloudOri_Corner_last.push_back(laserCloudOri_CornerSizeSum[laserCloudOri_SizeSum]);
-            laserCloudOri_Surf_last.push_back(laserCloudOri_SurfSizeSum[laserCloudOri_SizeSum]);
+            // laserCloudOri_Corner_last.push_back(Corner_last);
+            // laserCloudOri_Surf_last.push_back(Surf_last);
 
-            //小于滑窗大小时，直接添加元素，不删除最早的元素
-            int size_corner_vector_tmp= laserCloudOri_CornerSizeSum.size();
-            int size_surf_vector_tmp= laserCloudOri_SurfSizeSum.size();
-            //计算容器的平均值
-            int   Corner_last_average = accumulate( laserCloudOri_CornerSizeSum.begin(), laserCloudOri_CornerSizeSum.end(), 0.0) / laserCloudOri_Corner_last.size();
-            int  Surf_last_average = accumulate( laserCloudOri_SurfSizeSum.begin(), laserCloudOri_SurfSizeSum.end(), 0.0) / laserCloudOri_Surf_last.size();
+            // //小于滑窗大小时，直接添加元素，不删除最早的元素
+            // int size_corner_vector_tmp= laserCloudOri_Corner_last.size();
+            // int size_surf_vector_tmp= laserCloudOri_Surf_last.size();
+            // //计算容器的平均值
+            // int   Corner_last_average = accumulate( laserCloudOri_Corner_last.begin(), laserCloudOri_Corner_last.end(), 0.0) / laserCloudOri_Corner_last.size();
+            // int  Surf_last_average = accumulate( laserCloudOri_Surf_last.begin(), laserCloudOri_Surf_last.end(), 0.0) / laserCloudOri_Surf_last.size();
             
-             //选取滑窗内的最大值
-            double Corner_last_max = *max_element(laserCloudOri_CornerSizeSum.begin(), laserCloudOri_CornerSizeSum.end());
-            double Surf_last_max = *max_element(laserCloudOri_SurfSizeSum.begin(), laserCloudOri_SurfSizeSum.end());
+            //  //选取滑窗内的最大值
+            // double Corner_last_max = *max_element(laserCloudOri_Corner_last.begin(), laserCloudOri_Corner_last.end());
+            // double Surf_last_max = *max_element(laserCloudOri_Surf_last.begin(), laserCloudOri_Surf_last.end());
           
+            // cout <<size_corner_vector_tmp<<"    <10 "<< size_surf_vector_tmp<<endl;
+            // cout<<Corner_last_average<<"     "<<Surf_last_average<<"     "<<Corner_last_max<<"     "<<Surf_last_max<<"     "<< "  "<<endl;
+
             //计算数目影响因子
             confidence_num_corner = 0 ;
             confidence_num_surf = 0 ;
@@ -460,10 +471,9 @@ public:
 
         }
         else{
-            //向滑窗中添加最新的元素
-            laserCloudOri_Corner_last.push_back(laserCloudOri_CornerSizeSum[laserCloudOri_SizeSum]);
-            laserCloudOri_Surf_last.push_back(laserCloudOri_SurfSizeSum[laserCloudOri_SizeSum]);
-             //从容器末尾选择10个历史元素
+            //滑窗元素个数
+            int size_corner_vector_tmp= laserCloudOri_Corner_last.size();
+            int size_surf_vector_tmp= laserCloudOri_Surf_last.size();
              //计算滑窗内的平均值
             int  Corner_last_average = accumulate(laserCloudOri_Corner_last.begin(), laserCloudOri_Corner_last.end(), 0.0) / laserCloudOri_Corner_last.size();          
             int   Surf_last_average = accumulate(laserCloudOri_Surf_last.begin(), laserCloudOri_Surf_last.end(), 0.0) / laserCloudOri_Surf_last.size();
@@ -474,8 +484,8 @@ public:
             num_corner_Sliding_window.push_back(Corner_last_max);
             num_surf_Sliding_window.push_back(Surf_last_max);
             
-            // cout <<size_corner_vector_tmp<<"    aaa "<< size_surf_vector_tmp<<endl;
-            // cout<<Corner_last_average<<"     "<<Surf_last_average<<"     "<<Corner_last_max<<"     "<<Surf_last_max<<"     "<< "  "<<endl;
+            // cout <<size_corner_vector_tmp<<"    >10 "<< size_surf_vector_tmp<<endl;
+            // cout<<Corner_last_average<<"     "<<Surf_last_average<<"     "<<Corner_last_max<<"     "<<Surf_last_max<<"     "<<endl;
 
 
             //滑窗归一化因子
@@ -484,7 +494,10 @@ public:
             int sliding_history_min = *min_element(num_corner_Sliding_window.begin(), num_corner_Sliding_window.end());
             float sliding_window_factor = 0;
             if(sliding_history_max ==  sliding_history_min  ) { sliding_window_factor = 0;}
-            else{ sliding_window_factor = (sliding_now - sliding_history_min)/(sliding_history_max - sliding_history_min);}
+            sliding_window_factor = (sliding_now - sliding_history_min)/(sliding_history_max - sliding_history_min);
+
+
+            ROS_INFO("sliding_window_factor:%d",sliding_window_factor);
             //计算数目影响因子
             confidence_num_corner = 0.1 *((Corner_last  - Corner_last_average ) /  Corner_last_average) *sliding_window_factor ;
            confidence_num_surf = 0.1 *((Surf_last  - Surf_last_average ) /  Surf_last_average) *sliding_window_factor ;
@@ -497,14 +510,15 @@ public:
             // cout<<confidence_num_corner<<"   "<<confidence_num_surf<<"     "<<sliding_window_factor<<endl;
 
             //弹出容器中最早的元素
-            laserCloudOri_Corner_last.pop_back();
-            laserCloudOri_Surf_last.pop_back();
-            // laserCloudOri_Corner_last.erase(laserCloudOri_Corner_last.begin());
-            // laserCloudOri_Surf_last.erase(laserCloudOri_Surf_last.begin());
-
-
+         
+            laserCloudOri_Corner_last.erase(laserCloudOri_Corner_last.begin());
+            laserCloudOri_Surf_last.erase(laserCloudOri_Surf_last.begin());
+           
+      
         }
-     
+           //弹出点云数目容器中最早的元素
+            laserCloudOri_CornerSizeSum.erase(laserCloudOri_CornerSizeSum.begin());
+            laserCloudOri_SurfSizeSum.erase(laserCloudOri_SurfSizeSum.begin());
 
 
 
@@ -2129,16 +2143,18 @@ public:
                     break; }       
 
             }
-            ROS_INFO(" (laserCloudOriCornerSizeSum/iterCountNum) %d",int (laserCloudOriCornerSizeSum/iterCountNum));
-            ROS_INFO(" (laserCloudOriSurfSizeSum/iterCountNum) %d",int (laserCloudOriSurfSizeSum/iterCountNum));
+            // ROS_INFO(" BBBBBBBBB(laserCloudOriCornerSizeSum/iterCountNum) %d",int (laserCloudOriCornerSizeSum/iterCountNum));
+            // ROS_INFO("BBBBBBB (laserCloudOriSurfSizeSum/iterCountNum) %d",int (laserCloudOriSurfSizeSum/iterCountNum));
             // ROS_INFO(" (cornerCoeffSum/iterCountNum) %f",double (cornerCoeffSum/iterCountNum));
             // ROS_INFO(" (surfCoeffSum/iterCountNum) %f",double(surfCoeffSum/iterCountNum));
-            ROS_INFO("iterCountNum %d",iterCountNum);
+            // ROS_INFO("iterCountNum %d",iterCountNum);
 
 
             //使用容器保存参与LM计算位姿的      每一帧   角点数目和面点数目
                 laserCloudOri_CornerSizeSum.push_back(int (laserCloudOriCornerSizeSum/iterCountNum));
                 laserCloudOri_SurfSizeSum.push_back(int (laserCloudOriSurfSizeSum/iterCountNum));
+                // ROS_INFO("BBBBBBBB");//输入点云数目因子和后面使用的时候并不同步，
+
                 laserCloudOri_SizeSum ++;//帧数下标自增
         
             // cout <<"iterCountNum"<<iterCountNum<<endl;
