@@ -187,9 +187,6 @@ public:
     float   map_resolution_frames=0;//最近临密度
     int    map_num_clound_size=0;//有效范围点云数目
 
-    
-    
-
     //影响因子计算
     //点云数目影响因子
     float confidence_num_corner= 0;//角点
@@ -198,13 +195,14 @@ public:
     std::vector<int32_t> num_corner_Sliding_window;
     std::vector<int32_t> num_surf_Sliding_window;
     
+    //滑窗归一化因子
+     double   sliding_window_factor = 1.0;
 
     //点云数目影响因子容器
     std::vector<float>confidence_num_corner_vector;
     std::vector<float>confidence_num_surf_vector;
     //保存10次迭代的角点和面点的数目的滑窗
     std::vector<int> laserCloudOri_Corner_last;
-    
     std::vector<int> laserCloudOri_Surf_last;
 
     //环境复杂度影响因子
@@ -382,14 +380,22 @@ public:
 
     }
 
-
-
+    //求平均的函数
+    template <typename T>
+    double GetAverage( const std::vector<T>& vec  )
+    {
+            T  sum = 0;
+          for(int i=0; i<vec.size(); ++i) 
+          {
+             sum += vec[i]; 
+             }
+              return (double)sum/vec.size(); 
+    }
 
   //趋势回调函数
   void trendCallback(const trajectory_output::trend::ConstPtr &msg)
     { 
         
-      
         //判断ros消息是否接受到
         if (msg->env_trend.empty()  || msg->resolution_frames==0|| msg->environmentComplexity==0 ){
             ROS_ERROR("env_trend is empty!");
@@ -433,13 +439,13 @@ public:
         //         confidence_num_surf = 2*e/(1+sqrt(    ( exp(sqrt(1/SurfSizeSum_last)) -exp(-sqrt(1/SurfSizeSum_last)) )    /  ( exp(sqrt(1/SurfSizeSum_last)) +  exp(-sqrt(1/SurfSizeSum_last)) )                                 ) );        
         // }
         
-        if (laserCloudOri_CornerSizeSum.empty() && laserCloudOri_SurfSizeSum.empty() ) return;
-            // ROS_INFO("aaaaaaaaaaaa");
+        if (laserCloudOri_CornerSizeSum.empty() && laserCloudOri_SurfSizeSum.empty() )   {
+            ROS_INFO("点云数目容器为空");
+            return;} 
             //方案B
             //输出laserCloudOri_CornerSizeSum中的第一个元素
             std::vector<int>::iterator first_Corner = laserCloudOri_CornerSizeSum.begin();
             std::vector<int>::iterator first_surf = laserCloudOri_SurfSizeSum.begin();
-
             //最新的角点数目
             int Corner_last =*first_Corner;
             int Surf_last = *first_surf;
@@ -500,40 +506,66 @@ public:
             int  Surf_last_max = *max_element(laserCloudOri_Surf_last.begin(), laserCloudOri_Surf_last.end());
            
             // cout <<size_corner_vector_tmp<<"    >10 "<< size_surf_vector_tmp<<endl;
-            // cout<<Corner_last_average<<"     "<<Surf_last_average<<"     "<<Corner_last_max<<"     "<<Surf_last_max<<"     "<<endl;
 
 
            
             int sliding_now = Corner_last_max;
             int sliding_history_max = *max_element(num_corner_Sliding_window.begin(), num_corner_Sliding_window.end());
             int sliding_history_min = *min_element(num_corner_Sliding_window.begin(), num_corner_Sliding_window.end());
-            //滑窗归一化因子
-            double   sliding_window_factor = 1.0;
+ 
            //分子
-            int sliding_window_factor_numerator=1;
+            int  sliding_window_factor_numerator=1;
             sliding_window_factor_numerator = abs(sliding_now - sliding_history_min);
             //计算时分母不能为0
-            int sliding_window_factor_denominator = 1 ;
+            int  sliding_window_factor_denominator = 1 ;
             sliding_window_factor_denominator = abs(sliding_history_max - sliding_history_min);
-            
-            if ( sliding_window_factor_denominator == 0)
-            {
-                sliding_window_factor = 1.0;
-            }
-            else {
-                sliding_window_factor = sliding_window_factor_numerator / sliding_window_factor_denominator;
-
-            }
-
+            double window_factor = (double)sliding_window_factor_numerator / sliding_window_factor_denominator;
+            if ( sliding_window_factor_denominator == 0 ) {sliding_window_factor = 1.0;  }   
+            else {  sliding_window_factor =window_factor;   }
+              
+            /*
             ROS_INFO("abs(sliding_now - sliding_history_min):%d",sliding_window_factor_numerator);
             ROS_INFO("abs(sliding_history_max - sliding_history_min):%d",sliding_window_factor_denominator);
-            cout << "sliding_window_factor:" << sliding_window_factor << endl;
+            cout << "sliding_window_factor:" <<sliding_window_factor<< endl;
+            cout<<window_factor<<endl;
+            */
+            
+            double temp_corner_factor =(double) (Corner_last - Corner_last_average) / Corner_last_average;
+            double temp_surf_factor = (double) (Surf_last - Surf_last_average) / Surf_last_average;
+
             //计算数目影响因子
-            confidence_num_corner = 0.1 *((Corner_last  - Corner_last_average ) /  Corner_last_average) *sliding_window_factor ;
-           confidence_num_surf = 0.1 *((Surf_last  - Surf_last_average ) /  Surf_last_average) *sliding_window_factor ;
+            confidence_num_corner = 0.1 *temp_corner_factor * sliding_window_factor;
+            confidence_num_surf = 0.1 * temp_surf_factor * sliding_window_factor;
             
             
+         
+             /*
+            cout<<"temp_corner_factor"<<temp_corner_factor<<endl;
+            cout<<"temp_surf_factor"<<temp_surf_factor<<endl;
+            cout<<"confidence_num_corner"<<confidence_num_corner<<endl;
+            cout<<"confidence_num_surf"<<confidence_num_surf<<endl;
+
+            */
             
+            /*
+            // 均值统计
+            double  average_confidence_num_corner = test_vector(confidence_num_corner_vector);
+            double average_confidence_num_surf = GetAverage(confidence_num_surf_vector);
+            std::vector<double> temp_corner_factor_vector ;
+            std::vector<double> temp_surf_factor_vector ;
+            temp_corner_factor_vector.push_back(temp_corner_factor);
+            temp_surf_factor_vector.push_back(temp_surf_factor);
+            double  average_temp_corner_factor = GetAverage(temp_corner_factor_vector);
+            double average_temp_surf_factor = GetAverage(temp_surf_factor_vector);
+           
+         
+            cout<<"average_temp_corner_factor"<<average_temp_corner_factor<<endl;
+            cout<<"average_temp_surf_factor"<<average_temp_surf_factor<<endl;
+            cout<<"average_confidence_num_corner"<<average_confidence_num_corner<<endl;
+            cout<<"average_confidence_num_surf"<<average_confidence_num_surf<<endl;
+            */
+
+           
             //存入容器
             confidence_num_corner_vector.push_back(confidence_num_corner);
             confidence_num_surf_vector.push_back(confidence_num_surf);
@@ -557,25 +589,27 @@ public:
             laserCloudOri_CornerSizeSum.erase(laserCloudOri_CornerSizeSum.begin());
             laserCloudOri_SurfSizeSum.erase(laserCloudOri_SurfSizeSum.begin());
 
-
-
-
-
-
         //计算趋势因子，每10帧计算一次
         //初始前10帧不变化,
-        if(laserCloudOri_CornerSizeSum.size()<=10){
-        confidence_env =0;//0.01数量级
+        if(laserCloudOri_Corner_last.size()<=10){
+        ROS_INFO("前10帧不计算");
+        confidence_env =1;//0.01数量级
         confidence_env_vector.push_back(confidence_env);//存入容器
         }
         else{
         float env_slope_factor = map_env_trend[1];//斜率
         float env_intercept_factor = map_env_trend[0];//均值
         //归一化 计算步长
-        double step_length =  map_environmentComplexity/env_intercept_factor;
+        double step_length =  (double)map_environmentComplexity/env_intercept_factor;
         confidence_env = 0.1 * step_length * env_slope_factor;//0.01数量级
         confidence_env_vector.push_back(confidence_env);//存入容器
+      
+        cout<<"env_slope_factor"<<env_slope_factor<<endl;
+        cout<<"step_length"<<step_length<<endl;
         }
+
+   
+        cout<<"confidence_env"<<confidence_env<<endl;
 
         //计算体素滤波半径
         //给趋势变量容器分配内存
