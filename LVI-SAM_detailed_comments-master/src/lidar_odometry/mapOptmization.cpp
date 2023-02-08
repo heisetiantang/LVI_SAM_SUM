@@ -180,7 +180,7 @@ public:
     // 全局变量//接收trend得到
     float  map_area =0;//激光在侦测面积 
     float   map_changeNumber=0;//平面跳变次数
-    float   map_environmentComplexity=0;//环境复杂度
+    double   map_environmentComplexity=0;//环境复杂度
     //环境复杂度容器
     std::vector<float> map_env_Complexity;
     float   map_env_trend[8] ={0};//环境复杂度趋势
@@ -189,8 +189,8 @@ public:
 
     //影响因子计算
     //点云数目影响因子
-    float confidence_num_corner= 0;//角点
-    float confidence_num_surf= 0;//面点
+    double confidence_num_corner= 0;//角点
+    double confidence_num_surf= 0;//面点
     //保存滑窗中角点和面点的数目最大值的容器
     std::vector<int32_t> num_corner_Sliding_window;
     std::vector<int32_t> num_surf_Sliding_window;
@@ -199,37 +199,33 @@ public:
      double   sliding_window_factor = 1.0;
 
     //点云数目影响因子容器
-    std::vector<float>confidence_num_corner_vector;
-    std::vector<float>confidence_num_surf_vector;
+    std::vector<double>confidence_num_corner_vector;
+    std::vector<double>confidence_num_surf_vector;
     //保存10次迭代的角点和面点的数目的滑窗
     std::vector<int> laserCloudOri_Corner_last;
     std::vector<int> laserCloudOri_Surf_last;
 
     //环境复杂度影响因子
-    float confidence_env = 0;
+    double confidence_env = 0;
     //环境复杂度趋势因子容器
-    std::vector<float>confidence_env_vector;
+    std::vector<double>confidence_env_vector;
 
     //K近邻密度因素置信度
     float confidence_knn = 0;
 
-    //滤波半径计算
-    float Radius_voxel_corner=0;
-    float Radius_voxel_surf = 0;
-
-    //定义滤波半径
+    //计算滤波半径
     //上一帧的面点滤波半径
-    float lastSurfRadius = 0;
+    double lastSurfRadius = 0.4;
     //上一帧的角点滤波半径
-    float lastCornerRadius = 0;
+    double lastCornerRadius = 0.2;
     //当前帧的面点滤波半径
-    float currentSurfRadius = 0;
+    double currentSurfRadius = 0.4;
     //当前帧的角点滤波半径
-    float currentCornerRadius = 0;
+    double currentCornerRadius = 0.2;
 
     //滤波半径容器,初始化分配空间    //预留空间
-    std::vector<float>Radius_voxel_corner_vector;
-    std::vector<float>Radius_voxel_surf_vector;
+    std::vector<double>Radius_voxel_corner_vector;
+    std::vector<double>Radius_voxel_surf_vector;
 
     
     //***************************************************************************************
@@ -253,6 +249,9 @@ public:
         //滑窗历史最大值容器
         num_corner_Sliding_window.reserve(1000);
         num_surf_Sliding_window.reserve(1000);
+          //给趋势变量容器分配内存
+        Radius_voxel_surf_vector.reserve(1000);
+        Radius_voxel_corner_vector.reserve(1000);
 
 
         // 定义ISAM2参数类(ISAM2Params类)对象parameters
@@ -422,27 +421,11 @@ public:
         cout << "map_num_clound_size: " << map_num_clound_size << endl;
         */
        
-        //方案A
-        //每帧计算点云数目因子
-        //如果是第一帧,
-        // if (laserCloudOri_CornerSizeSum.empty() && laserCloudOri_SurfSizeSum.empty() )
-        // {
-        //      confidence_num_corner = 0 ;
-        //         confidence_num_surf = 0 ;
-        // }
-        // else
-        // {
-        //         int CornerSizeSum_last =laserCloudOri_CornerSizeSum[laserCloudOri_SizeSum];
-        //         int   SurfSizeSum_last  = laserCloudOri_SurfSizeSum[laserCloudOri_SizeSum];
-        //        //计算置信度
-        //         confidence_num_corner = 2*e/(1+sqrt(    ( exp(sqrt(1/CornerSizeSum_last)) -exp(-sqrt(1/CornerSizeSum_last)) )    /  ( exp(sqrt(1/CornerSizeSum_last)) +  exp(-sqrt(1/CornerSizeSum_last)) )                                 ) );
-        //         confidence_num_surf = 2*e/(1+sqrt(    ( exp(sqrt(1/SurfSizeSum_last)) -exp(-sqrt(1/SurfSizeSum_last)) )    /  ( exp(sqrt(1/SurfSizeSum_last)) +  exp(-sqrt(1/SurfSizeSum_last)) )                                 ) );        
-        // }
-        
+        //方案B
         if (laserCloudOri_CornerSizeSum.empty() && laserCloudOri_SurfSizeSum.empty() )   {
             ROS_INFO("点云数目容器为空");
             return;} 
-            //方案B
+          
             //输出laserCloudOri_CornerSizeSum中的第一个元素
             std::vector<int>::iterator first_Corner = laserCloudOri_CornerSizeSum.begin();
             std::vector<int>::iterator first_surf = laserCloudOri_SurfSizeSum.begin();
@@ -534,8 +517,8 @@ public:
             double temp_surf_factor = (double) (Surf_last - Surf_last_average) / Surf_last_average;
 
             //计算数目影响因子
-            confidence_num_corner = 0.1 *temp_corner_factor * sliding_window_factor;
-            confidence_num_surf = 0.1 * temp_surf_factor * sliding_window_factor;
+            confidence_num_corner = temp_corner_factor * sliding_window_factor;
+            confidence_num_surf =  temp_surf_factor * sliding_window_factor;
             
             
          
@@ -566,79 +549,94 @@ public:
             */
 
            
-            //存入容器
+            //数目影响因子存入容器
             confidence_num_corner_vector.push_back(confidence_num_corner);
             confidence_num_surf_vector.push_back(confidence_num_surf);
-            //存入容器
+            //滑窗最大值存入容器
             num_corner_Sliding_window.push_back(Corner_last_max);
             num_surf_Sliding_window.push_back(Surf_last_max);
             
-
-
             //显示输出
             // cout<<Corner_last_average<<"     "<<Surf_last_average<<"     "<<Corner_last_max<<"     "<<Surf_last_max<<"     "<< "  "<<endl;
-            // cout<<confidence_num_corner<<"   "<<confidence_num_surf<<"     "<<sliding_window_factor<<endl;
+            //  cout<<confidence_num_corner<<"   "<<confidence_num_surf<<"     "<<sliding_window_factor<<endl;
 
-            //弹出容器中最早的元素
+            //弹出滑窗中最早的元素
             laserCloudOri_Corner_last.erase(laserCloudOri_Corner_last.begin());
             laserCloudOri_Surf_last.erase(laserCloudOri_Surf_last.begin());
            
       
         }
-           //弹出点云数目容器中最早的元素
+           
+
+       //弹出点云数目容器中最早的元素
             laserCloudOri_CornerSizeSum.erase(laserCloudOri_CornerSizeSum.begin());
             laserCloudOri_SurfSizeSum.erase(laserCloudOri_SurfSizeSum.begin());
 
         //计算趋势因子，每10帧计算一次
         //初始前10帧不变化,
-        if(laserCloudOri_Corner_last.size()<=10){
-        ROS_INFO("前10帧不计算");
-        confidence_env =1;//0.01数量级
-        confidence_env_vector.push_back(confidence_env);//存入容器
+        if(laserCloudOri_SizeSum<=10 )
+        {
+        ROS_INFO(  "no trend factor");
+        confidence_env =0;//0.01数量级
+      
         }
         else{
-        float env_slope_factor = map_env_trend[1];//斜率
-        float env_intercept_factor = map_env_trend[0];//均值
+        double env_slope_factor = (double)map_env_trend[1];//斜率
+        double env_intercept_factor = (double)map_env_trend[0];//均值
         //归一化 计算步长
         double step_length =  (double)map_environmentComplexity/env_intercept_factor;
-        confidence_env = 0.1 * step_length * env_slope_factor;//0.01数量级
+        confidence_env = 0.01 * step_length * env_slope_factor;//0.01数量级
+
+        // cout<<"env_slope_factor"<<env_slope_factor<<endl;
+        // cout<<"step_length"<<step_length<<endl;
+        }
         confidence_env_vector.push_back(confidence_env);//存入容器
-      
-        cout<<"env_slope_factor"<<env_slope_factor<<endl;
-        cout<<"step_length"<<step_length<<endl;
-        }
+        // cout<<"confidence_env"<<confidence_env<<endl;
 
-   
-        cout<<"confidence_env"<<confidence_env<<endl;
+        // door02 范围曲线    0.1<x<0.8   0.2<y<1.6   1.852*x^3 + 7.361*x^2 + -9.612^x +  4.519 - y > 0 
+        double  range_door = 1.852*pow(lastSurfRadius,3) + 7.361*pow(lastSurfRadius,2)-9.612*lastSurfRadius +  4.519 - lastCornerRadius;
+
 
         //计算体素滤波半径
-        //给趋势变量容器分配内存
-        Radius_voxel_surf_vector.resize( float (1000));
-        Radius_voxel_corner_vector.resize( float (1000));
+        if (confidence_num_corner_vector.empty()|| confidence_env_vector.empty()){
+            ROS_INFO(  "confidence_num_corner_vector or confidence_env_vector is empty");
+            currentSurfRadius=(double)mappingSurfLeafSize;
+            currentCornerRadius=(double)mappingCornerLeafSize;
+            Radius_voxel_surf_vector.push_back(currentSurfRadius);
+            Radius_voxel_corner_vector.push_back(currentCornerRadius);
+            return; }
+                  
+        //超出范围恢复初始值   lastSurfRadius=0.4  lastCornerRadius =0.2
+        // cout<<"confidence_env"<<confidence_env<<"    "<<"lastSurfRadius"<<lastSurfRadius<<"lastCornerRadius"<<lastCornerRadius<<"    "<<"confidence_num_surf"<<confidence_num_surf<<"    "<<"confidence_num_corner"<<confidence_num_corner<<endl;
 
-        //计算体素滤波半径
-        if (laserCloudOri_CornerSizeSum.size()<=10 ||  laserCloudOri_SurfSizeSum.size()<=10){
-            //
-            Radius_voxel_corner =mappingCornerLeafSize;
-            Radius_voxel_surf = mappingSurfLeafSize;
+        //xy在范围内
+        if (0.1<=lastCornerRadius && lastCornerRadius<=0.8 &&  0.2<=lastSurfRadius && lastSurfRadius<=1.6  &&range_door>=0){
+           ROS_INFO(  "in range");
+            currentSurfRadius =(double)(lastSurfRadius + confidence_env *lastSurfRadius + confidence_num_surf *lastSurfRadius);
+            currentCornerRadius = lastCornerRadius + confidence_env *lastCornerRadius + confidence_num_corner *lastCornerRadius;
 
-            Radius_voxel_surf_vector.push_back(Radius_voxel_surf);
-            Radius_voxel_corner_vector.push_back(Radius_voxel_corner);
-        }
-        else{
+           }
+             else{ 
+            currentSurfRadius=(double)mappingSurfLeafSize;
+            currentCornerRadius=(double)mappingCornerLeafSize;
+            }
+
+            cout<<"currentSurfRadius"<<(double)currentSurfRadius<<endl;
+            cout<<"currentCornerRadius"<<currentCornerRadius<<endl;
            
-            
-        }
-
-        //符合条件的滤波半径输出出去
-        
-
+            lastSurfRadius = currentSurfRadius;
+            lastCornerRadius = currentCornerRadius;
+            //符合条件的滤波半径输出出去
+            Radius_voxel_surf_vector.push_back(currentSurfRadius);
+            Radius_voxel_corner_vector.push_back(currentCornerRadius);
       
 
 
+       
 
 
 
+     
     }
 
 
@@ -693,15 +691,37 @@ public:
             */
             updateInitialGuess();
 
+          
+          
+          
+          
             /* 提取与【当前帧】相邻的关键帧surroundingKeyPosesDS，
              * 组成局部地图laserCloudCornerFromMap、laserCloudSurfFromMap
             */
             extractSurroundingKeyFrames();
                    
 
+                /*
+                //导入计算出来的滤波半径*/
+                if (Radius_voxel_surf_vector.empty() || Radius_voxel_corner_vector.empty()){
+                ROS_ERROR("Radius_voxel_surf_vector or Radius_voxel_corner_vector is empty!");
+                }
+                 else{
+                    std::vector<double>::iterator Radius_Corner = Radius_voxel_corner_vector.begin();
+                    std::vector<double>::iterator Radius_surf = Radius_voxel_surf_vector.begin();
+                    //最新的滤波半径
+                    double size_corner =*Radius_Corner;
+                    double size_surf = *Radius_surf;
+                    ROS_INFO("size_corner: %d, size_surf: %d", size_corner, size_surf);
 
+                    downSizeFilterCorner.setLeafSize(size_corner, size_corner, size_corner);
+                    downSizeFilterSurf.setLeafSize(size_surf, size_surf, size_surf);
 
-
+        
+                    Radius_voxel_corner_vector.erase(Radius_voxel_corner_vector.begin());
+                    Radius_voxel_surf_vector.erase(Radius_voxel_surf_vector.begin());
+            }
+            
 
 
 
@@ -1596,8 +1616,7 @@ public:
         // Downsample cloud from current scan
         // laserCloudCornerLast、laserCloudSurfLast是在处理点云回调函数一开始就从形参转化而来
 
-        
-
+    
         // 对当前帧角面点云进行降采样
         // 角点云：0.2
         // 平面点云：0.4 

@@ -168,9 +168,9 @@ int main(int argc, char  *argv[])
 
           int count_end =0;
 
-    fstream file("./src/trajectory_output/src/test.txt", ios::out);
+    fstream file("./src/trajectory_output/src/result/traj", ios::out);
 
-    foutC.open("./src/trajectory_output/src/test.txt");
+    foutC.open("./src/trajectory_output/src/result/traj");
 
     // fstream time_frames("./src/trajectory_output/src/time_frames.txt", ios::out); 
     // foutB.open("./src/trajectory_output/src/time_frames.txt");
@@ -186,9 +186,6 @@ int main(int argc, char  *argv[])
              listener.waitForTransform("/odom", "/base_link", ros::Time(0), ros::Duration(1.0));
              listener.lookupTransform("/odom", "/base_link", ros::Time(0), transform);
              foutC << transform.stamp_ << " ";
-
-
-
 
             x = transform.getOrigin().getX();
             y = transform.getOrigin().getY();
