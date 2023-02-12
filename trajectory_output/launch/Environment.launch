@@ -1,11 +1,6 @@
+
 <launch>
-<arg name = "project" default = "trajectory_output"/>
-<node pkg="$(arg project)" type="$(arg project)_sub_trajectory" name="$(arg project)_sub_trajectory"  output="screen" />
-<node pkg="$(arg project)"  type="$(arg project)_Voxel_filter" name="$(arg project)_Voxel_filter"  output="screen" />
-
-
-
-
-
+    <node pkg="trajectory_output" type="sub_trajectory" name="sub_trajectory" output="screen" />
+    <node pkg="trajectory_output" type="Voxel_filter" name="Voxel_filter" output="screen" />
 
 </launch>

@@ -100,7 +100,6 @@ double environment_complexity_frequency = 0;//当前帧环境复杂度（全局�
 int count_point =0;//设置x轴计数器，到达一定数值就线性统计一下
 double  A_frame[2]={0}; //回归系数计数器容器
 double  dt_frame[6]={0}; //回归系数器容器
-
 double x_array[10]={0};
 double y_array[10]={0};
 
@@ -246,11 +245,11 @@ Coeff[5]=dt[3];
 Coeff[6]=dt[4];
 Coeff[7]=dt[5];
 
-// for (int z=0;z<8;z++)
-// {       
-//     cout<<"Coeff["<<z<<"]"<<Coeff[z]<<endl;
-//     trend_env_out<<Coeff[z]<<" ";
-// }
+for (int z=0;z<8;z++)
+{       
+    // cout<<"Coeff["<<z<<"]"<<Coeff[z]<<endl;
+    trend_env_out<<Coeff[z]<<" ";
+}
 
 trend_env_out<<endl;
 
@@ -324,7 +323,7 @@ float computeCloundResolution(const pcl::PointCloud<PointXYZIRT>::ConstPtr &clou
 //计算次数并返回次数
 float get_change_num_point(const pcl::PointCloud<PointXYZIRT> &new_cloundin  ,vector<double>distance_cur_vector )
 {
-    change_num.open("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/change_num.txt", ofstream::out | ofstream::app);
+    change_num.open("./src/trajectory_output/src/result/change_num.txt", ofstream::out | ofstream::app);
  
     //计算点云的突变阈值，大于误差，小于
     float point_change = 0.1;
@@ -428,7 +427,7 @@ float  get_area (pcl::PointCloud<PointXYZIRT>laserCloud_Ring ){
 
 void get_special_complexity(const pcl::PointCloud<PointXYZIRT> &cloundin)
 {
-area_out.open("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/area_out.txt", ofstream::out | ofstream::app);
+area_out.open("./src/trajectory_output/src/result/area_out.txt", ofstream::out | ofstream::app);
   
      //根据线数分组
     get_cloud_mul(cloundin,N_SCANS);
@@ -496,7 +495,7 @@ area_out.open("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/area_out.txt", 
     trend_msgs.area=area_sum;
     area_out  << area_sum<<"\n"; 
     area_out.close();
-    std::cout << "area_sum: " << area_sum << std::endl;//打印每一帧面积和
+    // std::cout << "area_sum: " << area_sum << std::endl;//打印每一帧面积和
     
 
   
@@ -509,7 +508,7 @@ area_out.open("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/area_out.txt", 
     environment_complexity_frequency_vector.push_back(environment_complexity_frequency);
     trend_msgs.environmentComplexity = environment_complexity_frequency;
     // cout<<"environment_complexity_frequency"<<environment_complexity_frequency<<endl;
-    environment_complexity.open("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/environment_complexity.txt", ofstream::out | ofstream::app);
+    environment_complexity.open("./src/trajectory_output/src/result/environment_complexity.txt", ofstream::out | ofstream::app);
     environment_complexity << environment_complexity_frequency<<"\n"; 
     environment_complexity.close();
 
@@ -649,7 +648,7 @@ void laserCloudHandler(const sensor_msgs::PointCloud2::ConstPtr &laserCloudMsg)
     int num_count = count_point%10;//每隔10帧计算一次线性回归
     if (num_count == 0 &&  count_point >0)
             { 
-                trend_env_out.open("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/trend_env_out.txt", ofstream::out | ofstream::app);
+                trend_env_out.open("./src/trajectory_output/src/result/trend_env_out.txt", ofstream::out | ofstream::app);
                 // cout<<"回归"<<endl;           
                 float Coeff[8];
                 //线性回归计算趋势
@@ -673,7 +672,7 @@ void laserCloudHandler(const sensor_msgs::PointCloud2::ConstPtr &laserCloudMsg)
     int  kd_num_count= count_point%10;//每间隔50帧计算一次k近邻密度
     if (kd_num_count == 0 )
         {
-                resolution_frame_out.open("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/resolution_frame_out.txt", ofstream::out | ofstream::app);
+                resolution_frame_out.open("./src/trajectory_output/src/result/resolution_frame_out.txt", ofstream::out | ofstream::app);
                 //kd树
                 //使用k近邻计算//极大的降低了计算速度
                 //计算每一帧点云的平均密度，判断是哪一种密集情况
@@ -707,11 +706,11 @@ int main(int argc, char **argv)
     printf("minimum_range %f \n ", MINIMUM_RANGE);
     printf("maximum_range %f \n", MAXIMUM_RANGE);
 
-    std::ofstream area_out("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/area_out.txt", ofstream::trunc);
-    std::ofstream environment_complexity("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/environment_complexity.txt", ofstream::trunc);
-    std::ofstream change_num("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/change_num.txt", ofstream::trunc);
-    std::ofstream  resolution_frame_out("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/resolution_frame_out.txt", ofstream::trunc);
-    std::ofstream trend_env_out("/home/gjm/catkin_ws_lvi/src/trajectory_output/src/trend_env_out.txt", ofstream::trunc);
+    std::ofstream area_out("./src/trajectory_output/src/result/area_out.txt", ofstream::trunc);
+    std::ofstream environment_complexity("./src/trajectory_output/src/result/environment_complexity.txt", ofstream::trunc);
+    std::ofstream change_num("./src/trajectory_output/src/result/change_num.txt", ofstream::trunc);
+    std::ofstream  resolution_frame_out("./src/trajectory_output/src/result/resolution_frame_out.txt", ofstream::trunc);
+    std::ofstream trend_env_out("./src/trajectory_output/src/result/trend_env_out.txt", ofstream::trunc);
     //接受激光雷达原始点云数据
     ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 500, laserCloudHandler);
    //发布计算的结果

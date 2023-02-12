@@ -201,7 +201,7 @@ int main(int argc, char  *argv[])
           if ( x_last== x && y_last == y &&z_last==z&&qx_last==qx &&qy_last==qy&&qz_last==qz &&qw_last==qw)
           {
               count_end ++;
-            //  if (count_end ==100) break;
+             if (count_end ==50) break;
           }
           else {
            x_last=x;

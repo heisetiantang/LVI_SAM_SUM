@@ -692,17 +692,9 @@ public:
             updateInitialGuess();
 
           
-          
-          
-          
-            /* 提取与【当前帧】相邻的关键帧surroundingKeyPosesDS，
-             * 组成局部地图laserCloudCornerFromMap、laserCloudSurfFromMap
-            */
-            extractSurroundingKeyFrames();
-                   
-
+                //使得下面这部分代码1s只执行一次
                 /*
-                //导入计算出来的滤波半径*/
+                //导入计算出来的滤波半径
                 if (Radius_voxel_surf_vector.empty() || Radius_voxel_corner_vector.empty()){
                 ROS_ERROR("Radius_voxel_surf_vector or Radius_voxel_corner_vector is empty!");
                 }
@@ -710,9 +702,9 @@ public:
                     std::vector<double>::iterator Radius_Corner = Radius_voxel_corner_vector.begin();
                     std::vector<double>::iterator Radius_surf = Radius_voxel_surf_vector.begin();
                     //最新的滤波半径
-                    double size_corner =*Radius_Corner;
-                    double size_surf = *Radius_surf;
-                    ROS_INFO("size_corner: %d, size_surf: %d", size_corner, size_surf);
+                    auto size_corner =*Radius_Corner;
+                    auto size_surf = *Radius_surf;
+                   cout<<"size_corner:"<<size_corner<<"size_surf:"<<size_surf<<endl;
 
                     downSizeFilterCorner.setLeafSize(size_corner, size_corner, size_corner);
                     downSizeFilterSurf.setLeafSize(size_surf, size_surf, size_surf);
@@ -721,7 +713,15 @@ public:
                     Radius_voxel_corner_vector.erase(Radius_voxel_corner_vector.begin());
                     Radius_voxel_surf_vector.erase(Radius_voxel_surf_vector.begin());
             }
-            
+            */
+          
+          
+            /* 提取与【当前帧】相邻的关键帧surroundingKeyPosesDS，
+             * 组成局部地图laserCloudCornerFromMap、laserCloudSurfFromMap
+            */
+            extractSurroundingKeyFrames();
+                   
+  
 
 
 
