@@ -181,8 +181,7 @@ public:
     float  map_area =0;//激光在侦测面积 
     float   map_changeNumber=0;//平面跳变次数
     double   map_environmentComplexity=0;//环境复杂度
-    //环境复杂度容器
-    std::vector<float> map_env_Complexity;
+  
     float   map_env_trend[8] ={0};//环境复杂度趋势
     float   map_resolution_frames=0;//最近临密度
     int    map_num_clound_size=0;//有效范围点云数目
@@ -204,6 +203,15 @@ public:
     //保存10次迭代的角点和面点的数目的滑窗
     std::vector<int> laserCloudOri_Corner_last;
     std::vector<int> laserCloudOri_Surf_last;
+
+    //环境复杂度容器
+    std::vector<float> map_env_Complexity;
+    // 定义三个等级的上限
+    const int LEVEL1_UPPER = 10;
+    const int LEVEL2_UPPER = 100;
+    const int LEVEL3_UPPER = 1000;
+
+
 
     //环境复杂度影响因子
     double confidence_env = 0;
@@ -252,6 +260,7 @@ public:
           //给趋势变量容器分配内存
         Radius_voxel_surf_vector.reserve(1000);
         Radius_voxel_corner_vector.reserve(1000);
+        map_env_Complexity.reserve(5000);
 
 
         // 定义ISAM2参数类(ISAM2Params类)对象parameters
@@ -572,30 +581,90 @@ public:
             laserCloudOri_CornerSizeSum.erase(laserCloudOri_CornerSizeSum.begin());
             laserCloudOri_SurfSizeSum.erase(laserCloudOri_SurfSizeSum.begin());
 
+        
+        //计算map_env_trend[0]均值划分场景
+        map_env_Complexity.push_back(map_environmentComplexity);
+        double  range_scene = GetAverage(map_env_Complexity);
         //计算趋势因子，每10帧计算一次
+        double env_slope_factor = (double)map_env_trend[1];//斜率
+        double env_intercept_factor = (double)map_env_trend[0];//均值
+        double step_length =  (double)map_environmentComplexity/env_intercept_factor;        //归一化 计算步长
+        //输出range_scene看等级
+        // cout<<"range_scene"<<range_scene<<endl;
+        /* */
+        double  range_in_line =0.0;
+        double  range_x_max = 0.0;
+        double  range_x_min = 0.0;
+        double  range_y_max = 0.0;
+        double  range_y_min = 0.0;
+        //判断场景大小，计算环境复杂度影响因子
+        string text; // 用于存储输出的文本
+        static int current_level = -1; // 当前的等级，初始化为-1表示未定义
+        // 判断 range_scene 所在的等级并输出文本
+            if (range_scene >= 1 && range_scene <= LEVEL1_UPPER) {
+                text = "室外大场景(等级1)";
+               confidence_env = 0.1 * step_length * env_slope_factor;//0.1数量级
+                // gate03 范围曲线    0.2<x<1角点   0.2<y<1.2面点   -6.25*x^3 + 10.54*x^2 -5.643^x + 1.96 - y > 0 
+                range_in_line = -6.25*pow(lastCornerRadius,3) + 10.54*pow(lastCornerRadius,2)-5.643*lastCornerRadius + 1.96 - lastSurfRadius;
+                range_x_min = 0.2;
+                range_x_max = 1.0;
+                range_y_min = 0.2;
+                range_y_max = 1.2;
+
+                if (current_level != 1) {
+                    cout << text << endl;
+                    current_level = 1;
+                }
+            } else if (range_scene > LEVEL1_UPPER && range_scene <= LEVEL2_UPPER) {
+                text = "中型场景(等级2)";
+                confidence_env = 0.05 * step_length * env_slope_factor;//0.01数量级
+              
+                    // door02 范围曲线    0.1<x<0.8   0.2<y<1.6   1.852*x^3 + 7.361*x^2 + -9.612^x +  4.519 - y > 0 
+                    range_in_line = 1.852*pow(lastSurfRadius,3) + 7.361*pow(lastSurfRadius,2)-9.612*lastSurfRadius +  4.519 - lastCornerRadius;
+                    range_x_min = 0.1;
+                    range_x_max = 0.8;
+                    range_y_min = 0.2;
+                    range_y_max = 1.6;
+
+                if (current_level != 2) {
+                    cout << text << endl;
+                    current_level = 2;
+                }
+            } else if (range_scene > LEVEL2_UPPER && range_scene <= LEVEL3_UPPER) {
+                text = "小型场景(等级3)";
+                confidence_env = 0.01 * step_length * env_slope_factor;//0.01数量级
+               
+                 // ROOM02 范围曲线    0.1<x<1角点   0.2<y<1.4面点   -3.078*x^3 + 7.295*x^2 -5.546^x + 1.926 - y > 0 
+                range_in_line = -3.078*pow(lastCornerRadius,3) + 7.295*pow(lastCornerRadius,2)-5.546*lastCornerRadius + 1.926 - lastSurfRadius;
+                range_x_min= 0.1;
+                range_x_max = 1.0;
+                range_y_min = 0.2;
+                range_y_max = 1.4;
+
+                if (current_level != 3) {
+                    cout << text << endl;
+                    current_level = 3;
+                }
+            } else {
+                text = "错误";
+                confidence_env = 0;//0.01数量级
+                if (current_level != 0) {
+                    cout << text << endl;
+                    current_level = 0;
+                }
+            }
+     
         //初始前10帧不变化,
         if(laserCloudOri_SizeSum<=10 )
         {
         ROS_INFO(  "no trend factor");
         confidence_env =0;//0.01数量级
-      
         }
-        else{
-        double env_slope_factor = (double)map_env_trend[1];//斜率
-        double env_intercept_factor = (double)map_env_trend[0];//均值
-        //归一化 计算步长
-        double step_length =  (double)map_environmentComplexity/env_intercept_factor;
-        confidence_env = 0.01 * step_length * env_slope_factor;//0.01数量级
 
         // cout<<"env_slope_factor"<<env_slope_factor<<endl;
         // cout<<"step_length"<<step_length<<endl;
-        }
         confidence_env_vector.push_back(confidence_env);//存入容器
         // cout<<"confidence_env"<<confidence_env<<endl;
-
-        // door02 范围曲线    0.1<x<0.8   0.2<y<1.6   1.852*x^3 + 7.361*x^2 + -9.612^x +  4.519 - y > 0 
-        double  range_door = 1.852*pow(lastSurfRadius,3) + 7.361*pow(lastSurfRadius,2)-9.612*lastSurfRadius +  4.519 - lastCornerRadius;
-
 
         //计算体素滤波半径
         if (confidence_num_corner_vector.empty()|| confidence_env_vector.empty()){
@@ -605,24 +674,22 @@ public:
             Radius_voxel_surf_vector.push_back(currentSurfRadius);
             Radius_voxel_corner_vector.push_back(currentCornerRadius);
             return; }
-                  
         //超出范围恢复初始值   lastSurfRadius=0.4  lastCornerRadius =0.2
         // cout<<"confidence_env"<<confidence_env<<"    "<<"lastSurfRadius"<<lastSurfRadius<<"lastCornerRadius"<<lastCornerRadius<<"    "<<"confidence_num_surf"<<confidence_num_surf<<"    "<<"confidence_num_corner"<<confidence_num_corner<<endl;
 
         //xy在范围内
-        if (0.1<=lastCornerRadius && lastCornerRadius<=0.8 &&  0.2<=lastSurfRadius && lastSurfRadius<=1.6  &&range_door>=0){
+        if (range_x_min<lastCornerRadius && lastCornerRadius < range_x_max &&  range_y_min<lastSurfRadius && lastSurfRadius<range_y_max  && range_in_line>0){
            ROS_INFO(  "in range");
             currentSurfRadius =(double)(lastSurfRadius + confidence_env *lastSurfRadius + confidence_num_surf *lastSurfRadius);
-            currentCornerRadius = lastCornerRadius + confidence_env *lastCornerRadius + confidence_num_corner *lastCornerRadius;
-
+            currentCornerRadius = (double)lastCornerRadius + confidence_env *lastCornerRadius + confidence_num_corner *lastCornerRadius;
            }
              else{ 
             currentSurfRadius=(double)mappingSurfLeafSize;
             currentCornerRadius=(double)mappingCornerLeafSize;
             }
-
-            cout<<"currentSurfRadius"<<(double)currentSurfRadius<<endl;
-            cout<<"currentCornerRadius"<<currentCornerRadius<<endl;
+        
+            // cout<<"currentSurfRadius"<<(double)currentSurfRadius<<endl;
+            // cout<<"currentCornerRadius"<<currentCornerRadius<<endl;
            
             lastSurfRadius = currentSurfRadius;
             lastCornerRadius = currentCornerRadius;
@@ -694,9 +761,9 @@ public:
           
                 //使得下面这部分代码1s只执行一次
                 /*
-                //导入计算出来的滤波半径
+                //导入计算出来的滤波半径  */
                 if (Radius_voxel_surf_vector.empty() || Radius_voxel_corner_vector.empty()){
-                ROS_ERROR("Radius_voxel_surf_vector or Radius_voxel_corner_vector is empty!");
+                // ROS_ERROR("Radius_voxel_surf_vector or Radius_voxel_corner_vector is empty!");
                 }
                  else{
                     std::vector<double>::iterator Radius_Corner = Radius_voxel_corner_vector.begin();
@@ -713,7 +780,7 @@ public:
                     Radius_voxel_corner_vector.erase(Radius_voxel_corner_vector.begin());
                     Radius_voxel_surf_vector.erase(Radius_voxel_surf_vector.begin());
             }
-            */
+          
           
           
             /* 提取与【当前帧】相邻的关键帧surroundingKeyPosesDS，
