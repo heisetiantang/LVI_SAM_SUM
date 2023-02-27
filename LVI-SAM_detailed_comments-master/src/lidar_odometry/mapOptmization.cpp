@@ -626,6 +626,7 @@ public:
                     range_y_min = 0.2;
                     range_y_max = 1.6;
 
+
                 if (current_level != 2) {
                     cout << text << endl;
                     current_level = 2;
@@ -674,16 +675,15 @@ public:
             Radius_voxel_surf_vector.push_back(currentSurfRadius);
             Radius_voxel_corner_vector.push_back(currentCornerRadius);
             return; }
-        //超出范围恢复初始值   lastSurfRadius=0.4  lastCornerRadius =0.2
         // cout<<"confidence_env"<<confidence_env<<"    "<<"lastSurfRadius"<<lastSurfRadius<<"lastCornerRadius"<<lastCornerRadius<<"    "<<"confidence_num_surf"<<confidence_num_surf<<"    "<<"confidence_num_corner"<<confidence_num_corner<<endl;
 
         //xy在范围内
         if (range_x_min<lastCornerRadius && lastCornerRadius < range_x_max &&  range_y_min<lastSurfRadius && lastSurfRadius<range_y_max  && range_in_line>0){
-           ROS_INFO(  "in range");
             currentSurfRadius =(double)(lastSurfRadius + confidence_env *lastSurfRadius + confidence_num_surf *lastSurfRadius);
             currentCornerRadius = (double)lastCornerRadius + confidence_env *lastCornerRadius + confidence_num_corner *lastCornerRadius;
            }
-             else{ 
+        else{ 
+            ROS_INFO(  "OUT range");
             currentSurfRadius=(double)mappingSurfLeafSize;
             currentCornerRadius=(double)mappingCornerLeafSize;
             }
