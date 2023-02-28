@@ -22,6 +22,9 @@
 #include <queue>
 #include <opencv2/core/eigen.hpp>
 
+#include "std_msgs/String.h" //普通文本类型的消息
+#include <std_msgs/Float32.h>
+#include <sstream>
 
 class Estimator
 {
@@ -126,3 +129,6 @@ class Estimator
 
     int failureCount;
 };
+
+
+

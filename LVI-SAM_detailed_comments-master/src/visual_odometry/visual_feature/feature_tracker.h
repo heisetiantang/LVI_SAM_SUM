@@ -20,6 +20,14 @@ using namespace std;
 using namespace camodocal;
 using namespace Eigen;
 
+//*********************************
+extern int num_tracked_pts;
+// extern int average_track;
+extern std::vector<int> num_tracked_all;
+#include "std_msgs/String.h" //普通文本类型的消息
+#include <std_msgs/Float32.h>
+#include <sstream>
+
 bool inBorder(const cv::Point2f &pt);
 
 void reduceVector(vector<cv::Point2f> &v, vector<uchar> status);
@@ -31,6 +39,9 @@ class FeatureTracker
     FeatureTracker();
 
     void readImage(const cv::Mat &_img,double _cur_time);
+
+
+
 
     void setMask();
 

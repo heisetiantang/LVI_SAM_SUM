@@ -11,6 +11,9 @@
 #include "estimator.h"
 #include "parameters.h"
 #include "utility/visualization.h"
+//**************
+
+
 
 
 Estimator estimator;
@@ -41,6 +44,29 @@ Eigen::Vector3d gyr_0;
 bool init_feature = 0;
 bool init_imu = 1;
 double last_imu_t = 0;
+
+
+//***********************
+  std::vector<int> num_tracked_all;//每帧跟踪成功的特征点数
+    float  average_track = 0;//平均每个特征点跟踪的次数
+
+struct ImageStatus
+{
+    double time;
+    Vector3d P;
+    Quaterniond Q;
+    Vector3d V;
+    Vector3d Ba;
+    Vector3d Bg;
+    Vector3d acc_0;
+    Vector3d gyr_0;
+};
+
+std::vector<ImageStatus> image_status_vector;
+
+
+
+
 
 // 从当前的imu测量值和上一时刻的PQV进行递推得到当前时刻的PQV
 void predict(const sensor_msgs::ImuConstPtr &imu_msg)
@@ -101,6 +127,23 @@ void update()
     queue<sensor_msgs::ImuConstPtr> tmp_imu_buf = imu_buf;
     for (sensor_msgs::ImuConstPtr tmp_imu_msg; !tmp_imu_buf.empty(); tmp_imu_buf.pop())
         predict(tmp_imu_buf.front());
+
+    //从处理完的从估计器中得到滑动窗口中最后一个图像帧的imu更新项[P,Q,V,ba,bg,a,g]
+
+// 保存状态估计信息
+ImageStatus image_status;
+image_status.time = latest_time;
+image_status.P = tmp_P;
+image_status.Q = tmp_Q;
+image_status.V = tmp_V;
+image_status.Ba = tmp_Ba;
+image_status.Bg = tmp_Bg;
+image_status.acc_0 = acc_0;
+image_status.gyr_0 = gyr_0;
+image_status_vector.push_back(image_status);
+
+
+
 }
 
 // 对imu数据和图像数据进行时间对齐
@@ -200,6 +243,12 @@ void feature_callback(const sensor_msgs::PointCloudConstPtr &feature_msg)
 
 void restart_callback(const std_msgs::BoolConstPtr &restart_msg)
 {
+    
+    
+    
+    
+    
+    
     if (restart_msg->data == true)
     {
         ROS_WARN("restart the estimator!");
@@ -344,6 +393,37 @@ void process()
     }
 }
 
+void track_num_callback( const std_msgs::Float32ConstPtr& msg )
+{
+       
+   float track_num = msg->data;
+     num_tracked_all.push_back(track_num);
+//    cout << "track_num: " << track_num << endl;
+    average_track = track_num/150;
+    //  cout<<"average_track: "<<average_track<<endl;
+
+if (image_status_vector.size() > 1){
+      // 读取当前和上一张图像的位置信息
+    Vector3d current_P = image_status_vector.end()->P;
+    Vector3d prev_P = (image_status_vector.end() - 1)->P;
+    double delta_x = current_P.x() - prev_P.x();
+    double delta_y = current_P.y() - prev_P.y();
+        cout<<"delta_x: "<<delta_x<<endl;
+        cout<<"delta_y"<<delta_y<<endl;
+
+
+
+}
+else{
+   return;
+   }
+
+
+
+
+
+image_status_vector.clear();
+}
 
 int main(int argc, char **argv)
 {
@@ -363,6 +443,9 @@ int main(int argc, char **argv)
     ros::Subscriber sub_odom    = n.subscribe("odometry/imu", 5000, odom_callback);
     ros::Subscriber sub_image   = n.subscribe(PROJECT_NAME + "/vins/feature/feature", 1, feature_callback);
     ros::Subscriber sub_restart = n.subscribe(PROJECT_NAME + "/vins/feature/restart", 1, restart_callback);
+    ros::Subscriber sub_track_num = n.subscribe<std_msgs::Float32>("track_topic", 1, track_num_callback);
+    
+    
     // TODO：对比vins-mono 多了一个 sub_odom (由LIO系统传递来)，少了一个 sub_relo_points (需要进一步学习)
     if (!USE_LIDAR)
         sub_odom.shutdown();

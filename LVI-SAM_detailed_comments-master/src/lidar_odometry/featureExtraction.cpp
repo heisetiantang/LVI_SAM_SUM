@@ -35,7 +35,7 @@ public:
     double rotioEdge2SurfDC = 0;
     float edgeNum = 0;
     float surfaceNum = 0;
-    float rotiofactor = 1; //比例系数
+    float rotiofactor = 1; // 比例系数
     float rotiofactorsurf = 1;
 
     //****************
@@ -52,15 +52,15 @@ public:
 
     FeatureExtraction()
     {
-        //重点关注该订阅者->调用FeatureExtraction对象的函数laserCloudInfoHandler
+        // 重点关注该订阅者->调用FeatureExtraction对象的函数laserCloudInfoHandler
         subLaserCloudInfo = nh.subscribe<lvi_sam::cloud_info>(PROJECT_NAME + "/lidar/deskew/cloud_info", 5, &FeatureExtraction::laserCloudInfoHandler, this, ros::TransportHints().tcpNoDelay());
 
-        //订阅者subLaserCloudInfo处理完点云后，将相关数据通过如下三个发布者向后续节点发布数据；
+        // 订阅者subLaserCloudInfo处理完点云后，将相关数据通过如下三个发布者向后续节点发布数据；
         pubLaserCloudInfo = nh.advertise<lvi_sam::cloud_info>(PROJECT_NAME + "/lidar/feature/cloud_info", 5);
         pubCornerPoints = nh.advertise<sensor_msgs::PointCloud2>(PROJECT_NAME + "/lidar/feature/cloud_corner", 5);
         pubSurfacePoints = nh.advertise<sensor_msgs::PointCloud2>(PROJECT_NAME + "/lidar/feature/cloud_surface", 5);
 
-        //初始化相关容器
+        // 初始化相关容器
         initializationValue();
     }
 
@@ -79,8 +79,8 @@ public:
         cloudNeighborPicked = new int[N_SCAN * Horizon_SCAN];
         cloudLabel = new int[N_SCAN * Horizon_SCAN];
 
-        //清空容器
-        // ratio_value.clear();
+        // 清空容器
+        //  ratio_value.clear();
 
         //************初始化储存角点/面点/比值的容器
 
@@ -103,6 +103,7 @@ public:
         // 4、依据曲率，提取角特征和面特征
         extractFeatures();
 
+        
         // 5、向后续节点发布提取到的角特征和面特征
         publishFeatureCloud();
     }
@@ -115,7 +116,7 @@ public:
         // 根据曲率计算公式，所以起始5个点(序号0-4)和最后五个点，不计算曲率；
         for (int i = 5; i < cloudSize - 5; i++)
         {
-            //曲率计算公式 = 当前点前5个点距离和 - 当前点距离*10 + 当前点后5个点距离和；
+            // 曲率计算公式 = 当前点前5个点距离和 - 当前点距离*10 + 当前点后5个点距离和；
             float diffRange = cloudInfo.pointRange[i - 5] + cloudInfo.pointRange[i - 4] + cloudInfo.pointRange[i - 3] + cloudInfo.pointRange[i - 2] + cloudInfo.pointRange[i - 1] - cloudInfo.pointRange[i] * 10 + cloudInfo.pointRange[i + 1] + cloudInfo.pointRange[i + 2] + cloudInfo.pointRange[i + 3] + cloudInfo.pointRange[i + 4] + cloudInfo.pointRange[i + 5];
 
             // 曲率采用距离的平方的形式
@@ -198,13 +199,11 @@ public:
         // 计算特征前，容器先清空；
         cornerCloud->clear();
         surfaceCloud->clear();
-        float size_surfaceCloundDS ;
+        float size_surfaceCloundDS;
 
-        edgeThreshold =1;
-       
+        edgeThreshold = 1;
+
         // downSizeFilter.setLeafSize(0.2,0.2,0.2);
-
-
 
         edgeNum = 0.0;
         surfaceNum = 0.0;
@@ -212,8 +211,6 @@ public:
         rotioofedge2surfout.open("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/pointChange/featurePoint/rotioofedge2surf.txt", ofstream::out | ofstream::app);
         // surfaceNumout.open("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/surfaceNum.txt", ofstream::out | ofstream::app);
         numsurfaceCloudScanDSout.open("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/pointChange/featurePoint/numsurfaceCloudScanDS.txt", ofstream::out | ofstream::app);
-
-
 
         pcl::PointCloud<PointType>::Ptr surfaceCloudScan(new pcl::PointCloud<PointType>());
         pcl::PointCloud<PointType>::Ptr surfaceCloudScanDS(new pcl::PointCloud<PointType>());
@@ -223,7 +220,7 @@ public:
         for (int i = 0; i < N_SCAN; i++)
         {
             surfaceCloudScan->clear();
-            //每个scan6等分
+            // 每个scan6等分
             for (int j = 0; j < 6; j++)
             {
 
@@ -239,18 +236,18 @@ public:
                 //
                 std::sort(cloudSmoothness.begin() + sp, cloudSmoothness.begin() + ep, by_value());
 
-                //记录挑到的点数
+                // 记录挑到的点数
                 int largestPickedNum = 0;
-                //选取曲率大的点，所以从后往前遍历；
+                // 选取曲率大的点，所以从后往前遍历；
                 for (int k = ep; k >= sp; k--)
                 {
-                    //利用cloudSmoothness中index可以关联到该点是否参与提取特征点的状态
+                    // 利用cloudSmoothness中index可以关联到该点是否参与提取特征点的状态
                     int ind = cloudSmoothness[k].ind;
                     // 0：参与提取特征点，曲率大于阈值，则算1个合格特征点
                     if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] > edgeThreshold)
                     {
                         largestPickedNum++;
-                        //每个scan分成6段，每段提取满足条件的曲率前20大的点作为特征点
+                        // 每个scan分成6段，每段提取满足条件的曲率前20大的点作为特征点
                         if (largestPickedNum <= 20)
                         {
                             cloudLabel[ind] = 1;
@@ -263,7 +260,7 @@ public:
                             break;
                         }
 
-                        //避免特征点过于集中，将当前点周围5个点状态置为1，不参与特征提取
+                        // 避免特征点过于集中，将当前点周围5个点状态置为1，不参与特征提取
                         cloudNeighborPicked[ind] = 1;
                         for (int l = 1; l <= 5; l++)
                         {
@@ -291,7 +288,7 @@ public:
 
                         cloudLabel[ind] = -1;
 
-                        //避免面点过于集中，当前点周围5各点被屏蔽掉；
+                        // 避免面点过于集中，当前点周围5各点被屏蔽掉；
                         cloudNeighborPicked[ind] = 1;
 
                         for (int l = 1; l <= 5; l++)
@@ -326,37 +323,32 @@ public:
                 }
             }
 
-
-
-
-             size_surfaceCloundDS += surfaceCloudScanDS->width * surfaceCloudScanDS->height;
-            //避免特征过大，造成计算时间过长，进行降采样；
+            size_surfaceCloundDS += surfaceCloudScanDS->width * surfaceCloudScanDS->height;
+            // 避免特征过大，造成计算时间过长，进行降采样；
             surfaceCloudScanDS->clear();
             downSizeFilter.setInputCloud(surfaceCloudScan);
             // downSizeFilter.setLeafSize(0.2, 0.2, 0.2);
             downSizeFilter.filter(*surfaceCloudScanDS);
             *surfaceCloud += *surfaceCloudScanDS;
         }
-            
-            
-        rotioofedge2surf = edgeNum / surfaceNum;//求角点和平面点的比例，并输出
-       rotioEdge2SurfDC =edgeNum / (surfaceCloud->points.size());
-        
+
+        rotioofedge2surf = edgeNum / surfaceNum; // 求角点和平面点的比例，并输出
+        rotioEdge2SurfDC = edgeNum / (surfaceCloud->points.size());
+
         //  cout << "edgeNum: 初始角点" << edgeNum << endl;
-        
+
         //  cout << "PointCloud before filtering: surfaceNum: 平面点" << surfaceNum << endl;
         // surfNum_vector.push_back(surfaceNum); //输入平面点数到容器中
-       // edgeNum_vector.push_back(edgeNum); //输入角点数到容器中
+        // edgeNum_vector.push_back(edgeNum); //输入角点数到容器中
         // ratio_vector.push_back(rotioofedge2surf); //将比例值保存在容器中
         // cout << "rotiofactor ;//比例系数" << rotiofactor <<endl;
         // cout << "一次滤波后平面点数目：" << surfaceCloud->points.size() << endl;
         // cout << "rotioofedge2surf: //比例" << rotioofedge2surf << endl;
 
-        edgeNumout   << edgeNum << "\n";                                      //写入角点
+        edgeNumout << edgeNum << "\n"; // 写入角点
         // surfaceNumout << surfaceNum << "\n";                             //写入滤波前平面点
-        numsurfaceCloudScanDSout  << surfaceNum<< "      " <<  surfaceCloud->points.size()<< "\n" ; //滤波前后面点数量变化
-        rotioofedge2surfout << rotioofedge2surf <<" "<< rotioEdge2SurfDC<< "\n";  //角点和面点比例；角点和滤波后平面点比例
-      
+        numsurfaceCloudScanDSout << surfaceNum << "      " << surfaceCloud->points.size() << "\n"; // 滤波前后面点数量变化
+        rotioofedge2surfout << rotioofedge2surf << " " << rotioEdge2SurfDC << "\n";                // 角点和面点比例；角点和滤波后平面点比例
 
         edgeNumout.close();
         // surfaceNumout.close();
@@ -364,50 +356,148 @@ public:
         numsurfaceCloudScanDSout.close();
     }
 
-    // 清空内存
-    void freeCloudInfoMemory()
+    // 摘抄自LVI-SAM-2-23
+    //  计算角点云和表面点云的置信度
+    void calpoint(cv::Mat mat)//这接受的图像是那个图像？？？？？？？？？
     {
-        cloudInfo.startRingIndex.clear();
-        cloudInfo.startRingIndex.shrink_to_fit();
-        cloudInfo.endRingIndex.clear();
-        cloudInfo.endRingIndex.shrink_to_fit();
-        cloudInfo.pointColInd.clear();
-        cloudInfo.pointColInd.shrink_to_fit();
-        cloudInfo.pointRange.clear();
-        cloudInfo.pointRange.shrink_to_fit();
+        int g_nThresh = 0;
+        // 计算角点云
+        // 找到图像的角点与角点云进行比较
+        cv::Mat dstImage;    // 目标图
+        cv::Mat normImage;   // 归一化后的图
+        cv::Mat scaledImage; // 线性变换后的八位无符号整形的图
+
+        // 置零当前需要显示的两幅图，即清除上一次调用此函数时他们的值
+        dstImage = cv::Mat::zeros(mat.size(), CV_32FC1);
+        cv::Mat g_srcImage1 = mat.clone();
+
+        // 角点检测
+        /*CornerHarris()函数 是一个用来检测图像中角点的函数。
+        它接受mat(图像或者图像的一部分)作为输入，
+        dstImage作为输出，2和3分别是Sobel函数中指定的X和Y方向求导次数，
+        0.04是Harris角点检测方程中的参数，
+        BORDER_DEFAULT是用来指定边界处理方式。
+        Normalize()函数是一个归一化函数，
+        它用来将给定的dstImage转换到0到255之间的范围，
+        NORM_MINMAX指定用最大值和最小值进行归一化，
+        CV_32FC1指定结果图像的深度，Mat()指定结果图像的格式。 */
+
+        cornerHarris(mat, dstImage, 2, 3, 0.04, BORDER_DEFAULT);
+        normalize(dstImage, normImage, 0, 255, NORM_MINMAX, CV_32FC1, Mat());
+
+        // 将归一化后的图线性变换成8位无符号整形
+        convertScaleAbs(normImage, scaledImage);
+
+        int matchpoint = 0;
+        int findnomatchpoint = 0;
+        std::vector<Point2f> cornercloudpoint;
+        std::vector<Point2f> surfaceCloudpoint;
+        for (int k = 0; k < cornerCloud->points.size(); k++)
+        {
+            cv::Point2f point2f(cornerCloud->points[k].x, cornerCloud->points[k].y);
+            cornercloudpoint.push_back(point2f);
+        }
+        for (int k = 0; k < surfaceCloud->points.size(); k++)
+        {
+            cv::Point2f point2f(surfaceCloud->points[k].x, surfaceCloud->points[k].y);
+            surfaceCloudpoint.push_back(point2f);
+        }
+
+        // 将检测到的，且符合阀值条件的角点绘制出来
+        for (int i = 0; i < normImage.rows; i++)
+        {
+            for (int j = 0; j < normImage.cols; j++)
+            {
+                if ((int)normImage.at<float>(i, j) <= 0)
+                    return;
+                if ((int)normImage.at<float>(i, j) < g_nThresh + 80)
+                {
+                    bool present_surf = std::any_of(begin(surfaceCloudpoint), end(surfaceCloudpoint), [&](cv::Point2f findpoint)
+                                                    { return findpoint == cv::Point2f(j, i); });
+
+                    if (present_surf)
+                    {
+                        findnomatchpoint += 1;
+                    }
+
+                    else if ((int)normImage.at<float>(i, j) > g_nThresh + 80)
+                    {
+                        bool present_corner = std::any_of(begin(cornercloudpoint), end(cornercloudpoint), [&](cv::Point2f findpoint)
+                                                          { return findpoint == cv::Point2f(j, i); });
+
+                        if (present_corner)
+                        {
+                            matchpoint += 1;
+                        }
+                        // circle(g_srcImage1, Point(j, i), 5, Scalar(10, 10, 255), 2, 8, 0);
+                        // circle(scaledImage, Point(j, i), 5, Scalar(0, 10, 255), 2, 8, 0);
+                    }
+                }
+            }
+            double match_rate_corner = matchpoint / cornerCloud->points.size() * 100;
+            // imshow(WINDOW_NAME1, g_srcImage1);
+            //  imshow(WINDOW_NAME2, scaledImage);
+            double match_rate_corner_surf= findnomatchpoint / surfaceCloud->points.size() * 100;
+            double totalcloudpoint = (match_rate_corner + match_rate_corner_surf) / 2;
+        }
     }
 
-    // 发布角点特征点云和面点特征点云
-    void publishFeatureCloud()
+
+
+
+
+        // 清空内存
+        void freeCloudInfoMemory()
+        {
+            cloudInfo.startRingIndex.clear();
+            cloudInfo.startRingIndex.shrink_to_fit();
+            cloudInfo.endRingIndex.clear();
+            cloudInfo.endRingIndex.shrink_to_fit();
+            cloudInfo.pointColInd.clear();
+            cloudInfo.pointColInd.shrink_to_fit();
+            cloudInfo.pointRange.clear();
+            cloudInfo.pointRange.shrink_to_fit();
+        }
+
+        // 发布角点特征点云和面点特征点云
+        void publishFeatureCloud()
+        {
+            // free cloud info memory
+            // 清空点云内存
+            freeCloudInfoMemory();
+
+            // save newly extracted features
+            // 发布最新的角点点云和面点点云
+            cloudInfo.cloud_corner = publishCloud(&pubCornerPoints, cornerCloud, cloudHeader.stamp, "base_link");
+            cloudInfo.cloud_surface = publishCloud(&pubSurfacePoints, surfaceCloud, cloudHeader.stamp, "base_link");
+            // publish to mapOptimization
+            pubLaserCloudInfo.publish(cloudInfo);
+        }
+    };
+
+
+
+
+
+
+
+
+
+    int main(int argc, char **argv)
     {
-        // free cloud info memory
-        // 清空点云内存
-        freeCloudInfoMemory();
+        ros::init(argc, argv, "lidar");
 
-        // save newly extracted features
-        //发布最新的角点点云和面点点云
-        cloudInfo.cloud_corner = publishCloud(&pubCornerPoints, cornerCloud, cloudHeader.stamp, "base_link");
-        cloudInfo.cloud_surface = publishCloud(&pubSurfacePoints, surfaceCloud, cloudHeader.stamp, "base_link");
-        // publish to mapOptimization
-        pubLaserCloudInfo.publish(cloudInfo);
+        std::ofstream edgeNumout("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/pointChange/featurePoint/edgeNum.txt", ofstream::trunc);
+        std::ofstream rotioofedge2surfout("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/pointChange/featurePoint/rotioofedge2surf.txt", ofstream::trunc);
+        // std::ofstream surfaceNumout("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/surfaceNum.txt", ofstream::trunc);
+        std::ofstream numsurfaceCloudScanDSout("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/pointChange/featurePoint/numsurfaceCloudScanDS.txt", ofstream::trunc);
+
+        // 构建特征提取对象->构造器
+        FeatureExtraction FE;
+
+        ROS_INFO("\033[1;32m----> Lidar Feature Extraction Started.\033[0m");
+
+        ros::spin();
+
+        return 0;
     }
-};
-
-int main(int argc, char **argv)
-{
-    ros::init(argc, argv, "lidar");
-
-    std::ofstream edgeNumout("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/pointChange/featurePoint/edgeNum.txt", ofstream::trunc);
-    std::ofstream rotioofedge2surfout("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/pointChange/featurePoint/rotioofedge2surf.txt", ofstream::trunc);
-    // std::ofstream surfaceNumout("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/surfaceNum.txt", ofstream::trunc);
-    std::ofstream numsurfaceCloudScanDSout("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/pointChange/featurePoint/numsurfaceCloudScanDS.txt", ofstream::trunc);
-
-    //构建特征提取对象->构造器
-    FeatureExtraction FE;
-
-    ROS_INFO("\033[1;32m----> Lidar Feature Extraction Started.\033[0m");
-
-    ros::spin();
-
-    return 0;
-}

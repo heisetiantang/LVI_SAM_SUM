@@ -20,6 +20,9 @@ DepthRegister *depthRegister;
 ros::Publisher pub_feature;
 ros::Publisher pub_match;
 ros::Publisher pub_restart;
+ros::Publisher pub_track;
+
+
 
 // feature tracker variables
 FeatureTracker trackerData[NUM_OF_CAM];
@@ -33,6 +36,7 @@ bool init_pub = 0;
 
 void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
 {
+    
     // 获取当前图像中时间戳
     double cur_img_time = img_msg->header.stamp.toSec();
 
@@ -106,6 +110,7 @@ void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
     for (int i = 0; i < NUM_OF_CAM; i++)
     {
         ROS_DEBUG("processing camera %d", i);
+        //单目时：FeatureTracker::readImage() 函数读取图像数据进行处理
         if (i != 1 || !STEREO_TRACK)
             trackerData[i].readImage(ptr->image.rowRange(ROW * i, ROW * (i + 1)), cur_img_time);
         else
@@ -118,6 +123,9 @@ void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
             else
                 trackerData[i].cur_img = ptr->image.rowRange(ROW * i, ROW * (i + 1));
         }
+       
+       
+       
 
         #if SHOW_UNDISTORTION
             trackerData[i].showUndistortion("undistrotion_" + std::to_string(i));
@@ -392,10 +400,16 @@ int main(int argc, char **argv)
     if (!USE_LIDAR)
         sub_lidar.shutdown();
 
+    
+
     // 发布特征给estimator
     pub_feature = n.advertise<sensor_msgs::PointCloud>(PROJECT_NAME + "/vins/feature/feature",     5);
     pub_match   = n.advertise<sensor_msgs::Image>     (PROJECT_NAME + "/vins/feature/feature_img", 5);
     pub_restart = n.advertise<std_msgs::Bool>         (PROJECT_NAME + "/vins/feature/restart",     5);
+    
+    //*******************************
+    pub_track = n.advertise<std_msgs::Float32>("track_topic", 100);
+    
 
     // two ROS spinners for parallel processing (image and lidar)
     // 雷达和图像并行处理

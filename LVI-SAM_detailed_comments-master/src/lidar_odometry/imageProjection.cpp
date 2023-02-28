@@ -167,6 +167,10 @@ public:
         projectPointCloud();
         //4 点云提取
         cloudExtraction();
+
+        //排除不可信点
+        // caltrustcloud();
+
         //5 发布点云
         publishClouds();
         //6 重置参数
@@ -571,7 +575,6 @@ public:
                 if (rangeMat.at<float>(i,j) != FLT_MAX)
                 {
                     // mark the points' column index for marking occlusion later
-                    // 
                     cloudInfo.pointColInd[count] = j;
                     // save range info
                     cloudInfo.pointRange[count] = rangeMat.at<float>(i,j);
@@ -584,6 +587,44 @@ public:
             cloudInfo.endRingIndex[i] = count -1 - 5;//最末尾的五个不考虑
         }
     }
+
+    // 摘抄自LVI-SAM-2-23
+      // 计算cloudinfo中的点均方误差来判断点的质量，计算点的偏离程度，判断置信度
+    /*
+    void caltrustcloud()
+    {
+        int rangeinfolenth = cloudInfo.pointRange.size();
+        double suminfo = 0.0;
+        double sqsuminfo = 0.0;
+
+        for (int i = 0; i < rangeinfolenth; i++)
+        {
+            suminfo += cloudInfo.pointRange[i];
+        }
+        double averageinfo = suminfo / rangeinfolenth;
+        for (int i = 0; i < rangeinfolenth; i++)
+        {
+            sqsuminfo += (cloudInfo.pointRange[i] - averageinfo) * (cloudInfo.pointRange[i] - averageinfo);
+        }
+        double sqdis = sqrt(sqsuminfo) / rangeinfolenth;
+
+        for (int i = 0; i < rangeinfolenth; i++)
+        {
+            if (fabs(cloudInfo.pointRange[i] - averageinfo) > sqdis)
+            {
+                extractedCloud->points.erase(extractedCloud->points.begin() + i);
+
+            }
+        }
+
+        double pointnode = (extractedCloud->points.size() / rangeinfolenth) * 100;
+        cout<<"pointnode:"<<pointnode<<endl;
+        // return pointnode;
+    }
+    */
+ 
+
+
 
     void publishClouds()
     {

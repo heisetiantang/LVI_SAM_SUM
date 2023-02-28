@@ -2,6 +2,11 @@
 
 int FeatureTracker::n_id = 0;
 
+//******************************
+ int num_tracked_pts = 0;//跟踪成功的特征点数
+
+std_msgs::Float32 msg_track;
+extern ros::Publisher pub_track;
 // 确定光流点是否超过图像边界
 bool inBorder(const cv::Point2f &pt)
 {
@@ -93,6 +98,13 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
     // 得到当前值时间戳
     cur_time = _cur_time;
 
+
+
+
+
+
+
+
     // 判断图像是否需要进行自适应化图像
     if (EQUALIZE)
     {
@@ -117,14 +129,18 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
         // 当前帧设为输入参数
         forw_img = img;
     }
-
+    
     forw_pts.clear();
+
+
 
     if (cur_pts.size() > 0) // 上一帧有特征点，就可以进行光流追踪了
     {
         TicToc t_o;
         vector<uchar> status;
+
         vector<float> err;
+
         // 通过opencv光流追踪给的状态位剔除outlier
         // void cv::calcOpticalFlowPyrLK	(	
         //         InputArray 	prevImg, 前一个图像
@@ -136,13 +152,14 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
         //         Size 	winSize = Size(21, 21),每个金字塔等级的搜索窗口的winSize大小
         //         int 	maxLevel = 3,   基于0的最大金字塔等级数
         //    )
+
         cv::calcOpticalFlowPyrLK(cur_img, forw_img, cur_pts, forw_pts, status, err, cv::Size(21, 21), 3);
 
-        // 遍历根据光流法在当前帧找到的光流点，
         // 保留找到相应特征的流，并且在边界变点
         for (int i = 0; i < int(forw_pts.size()); i++)
             if (status[i] && !inBorder(forw_pts[i]))
                 status[i] = 0;
+        
         // 根据找到2d矢量点的状态，删除不好的点和id；
         reduceVector(prev_pts, status); // 没用到
         reduceVector(cur_pts, status);
@@ -151,11 +168,28 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
         reduceVector(cur_un_pts, status); // 去畸变后的坐标
         reduceVector(track_cnt, status);  // 追踪次数
         ROS_DEBUG("temporal optical flow costs: %fms", t_o.toc());
+
+        // cout<<"status.size(): "<<status.size()<<endl;
     }
 
+
+    //******************************************
+    int trck_num = 0;
+    int point_num = 0;
     // 被追踪到的是上一帧就存在的，因此追踪数+1
+    //计算track_cnt中的跟踪次数的和
     for (auto &n : track_cnt)
+      {
         n++;
+        trck_num += n;
+        point_num++;
+        }
+   num_tracked_pts = trck_num;
+    msg_track.data =(float) num_tracked_pts;
+    pub_track.publish(msg_track);
+    //    cout<<"trck_num: "<<trck_num<<endl;
+    //    cout<<"point_num: "<<point_num<<endl;
+//**************************
 
     if (PUB_THIS_FRAME)
     {
@@ -180,7 +214,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
                 cout << "mask type wrong " << endl;
             if (mask.size() != forw_img.size())
                 cout << "wrong size " << endl;
-                // 只有发布才可以提取更多特征点，同时避免提的点进mask
+            // 只有发布才可以提取更多特征点，同时避免提的点进mask
             // 会不会这些点集中？会，不过没关系，他们下一次作为老将就得接受均匀化的洗礼
             // void cv::goodFeaturesToTrack(
             //         cv::InputArray image, // 输入图像（CV_8UC1 CV_32FC1）
@@ -209,10 +243,15 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
     prev_img = cur_img;
     prev_pts = cur_pts;
     prev_un_pts = cur_un_pts; // 以上三个量无用
+
     cur_img = forw_img; // 实际上是上一帧的图像
     cur_pts = forw_pts; // 上一帧的特征点
     undistortedPoints();
     prev_time = cur_time;
+
+
+
+
 }
 
 void FeatureTracker::rejectWithF()
