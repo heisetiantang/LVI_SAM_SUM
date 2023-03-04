@@ -11,9 +11,6 @@
 #include "estimator.h"
 #include "parameters.h"
 #include "utility/visualization.h"
-//**************
-
-
 
 
 Estimator estimator;
@@ -47,8 +44,20 @@ double last_imu_t = 0;
 
 
 //***********************
-  std::vector<int> num_tracked_all;//每帧跟踪成功的特征点数
+    double w_fecture =1;//特征跟踪性能权值1/150
+    double w_motion=1;//线速度性能权值1
+    double w_angle=1;//角速度性能权值1
+    double Scvalue;//计算S值
+    
+    double S_norm = 0;//S值归一化
+    std::vector<int> num_tracked_all;//每帧跟踪成功的特征点数
     float  average_track = 0;//平均每个特征点跟踪的次数
+
+//**************
+//创建容器保存每帧的跟踪数目
+std::vector<float> tmp_track_num_sliding;;
+std::ofstream Estimator_result;
+std::ofstream S_result;
 
 struct ImageStatus
 {
@@ -245,10 +254,6 @@ void restart_callback(const std_msgs::BoolConstPtr &restart_msg)
 {
     
     
-    
-    
-    
-    
     if (restart_msg->data == true)
     {
         ROS_WARN("restart the estimator!");
@@ -395,12 +400,32 @@ void process()
 
 void track_num_callback( const std_msgs::Float32ConstPtr& msg )
 {
-       
-   float track_num = msg->data;
+    Estimator_result.open("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/visual_odometry/Estimator_result.txt",ofstream::out | ofstream::app);
+    S_result.open("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/visual_odometry/S_result.txt",ofstream::out | ofstream::app);
+    
+    if (  msg->data ==0)
+            {ROS_ERROR("track_num is empty!");
+                return;}
+    tmp_track_num_sliding.reserve(1000);
+    float track_num = msg->data;//当前帧跟踪到的特征点数
      num_tracked_all.push_back(track_num);
-//    cout << "track_num: " << track_num << endl;
+    if (num_tracked_all.size()>11){
+        //弹出最前面的元素
+        num_tracked_all.erase(num_tracked_all.begin());
+    }
+    else{
+        ROS_INFO("num_tracked_all.size()<=10");
+        return;
+    }
+    //输出一个窗口内最大值
+    double max_track_num = *max_element(num_tracked_all.begin(),num_tracked_all.end());
+    // cout<<"max_track_num: "<<max_track_num<<endl;
+    //cout << "track_num: " << track_num << endl;
     average_track = track_num/150;
-    //  cout<<"average_track: "<<average_track<<endl;
+  
+    Estimator_result<<track_num<<"    ";
+    Estimator_result<<average_track<<"   ";
+
 
 if (image_status_vector.size() > 1){
       // 读取当前和上一张图像的位置信息
@@ -408,21 +433,79 @@ if (image_status_vector.size() > 1){
     Vector3d prev_P = (image_status_vector.end() - 1)->P;
     double delta_x = current_P.x() - prev_P.x();
     double delta_y = current_P.y() - prev_P.y();
-        cout<<"delta_x: "<<delta_x<<endl;
-        cout<<"delta_y"<<delta_y<<endl;
+    //机器人在水平面运动，只计算yaw角
+Quaterniond current_Q = image_status_vector.end()->Q;
+Quaterniond prev_Q = (image_status_vector.end() - 1)->Q;
+Matrix3d current_R = current_Q.toRotationMatrix();
+Matrix3d prev_R = prev_Q.toRotationMatrix();
+Matrix3d R = current_R.transpose() * prev_R; // 当前机器人的旋转矩阵
+Vector3d direction = R * Vector3d::UnitX(); // 当前机器人的方向向量
+double yaw = atan2(direction.y(), direction.x()); // 计算yaw角
 
+//计算Si
+Scvalue = w_fecture*average_track - w_motion*sqrt(delta_x*delta_x + delta_y*delta_y) - w_angle*abs(yaw);
+// cout<<"yaw: "<<yaw<<endl;
+// if (sqrt(delta_x*delta_x + delta_y*delta_y) >){}
 
+Estimator_result<<delta_x<<"   ";
+Estimator_result<<delta_y<<"   ";
+Estimator_result<<yaw<<"   ";
+Estimator_result<<sqrt(delta_x*delta_x + delta_y*delta_y)<<endl;
 
+cout<<"average_track: "<<average_track<<endl;
+cout<<"w_motion*sqrt(delta_x*delta_x + delta_y*delta_y)"<<w_motion*sqrt(delta_x*delta_x + delta_y*delta_y)<<endl;
+cout<<"w_angle*abs(yaw)"<<w_angle*abs(yaw)<<endl;
 }
 else{
+   ROS_ERROR("image_status_vector.size() <= 1");
+   S_norm = 1;
+   Scvalue = 0;
+    S_result<<Scvalue<<"    ";
+    S_result<<S_norm<<endl;
    return;
-   }
+}
+
+
+
+S_norm = Scvalue /( max_track_num/150);//归一化评分
+// cout<<"max_track_num: "<<max_track_num<<endl;
+
+cout<<"Scvalue: "<<Scvalue<<endl;
+cout<<"S_norm: "<<S_norm<<endl;
+S_result<<Scvalue<<"    ";
+S_result<<S_norm<<endl;
+
+S_result.close();
+Estimator_result.close();
+// if (S_norm < 0 )
+// {
+//     ROS_ERROR("S_norm < 0");
+//         ROS_WARN("restart the estimator!");
+//         m_buf.lock();
+//         while(!feature_buf.empty())
+//             feature_buf.pop();
+//         while(!imu_buf.empty())
+//             imu_buf.pop();
+//         m_buf.unlock();
+//         m_estimator.lock();
+//         estimator.clearState();
+//         estimator.setParameter();
+//         m_estimator.unlock();
+//         current_time = -1;
+//         last_imu_t = 0;
+    
+//    return;
+// }
+ 
 
 
 
 
 
-image_status_vector.clear();
+
+
+
+
 }
 
 int main(int argc, char **argv)
@@ -439,6 +522,8 @@ int main(int argc, char **argv)
 
     odomRegister = new odometryRegister(n);
 
+    std::ofstream Estimator_result("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/visual_odometry/Estimator_result.txt", ofstream::trunc);
+    std::ofstream S_result("/home/gjm/catkin_ws_lvi/src/LVI-SAM_detailed_comments-master/src/visual_odometry/S_result.txt", ofstream::trunc);
     ros::Subscriber sub_imu     = n.subscribe(IMU_TOPIC,      5000, imu_callback,  ros::TransportHints().tcpNoDelay());
     ros::Subscriber sub_odom    = n.subscribe("odometry/imu", 5000, odom_callback);
     ros::Subscriber sub_image   = n.subscribe(PROJECT_NAME + "/vins/feature/feature", 1, feature_callback);

@@ -67,7 +67,21 @@ bool ProjectionFactor::Evaluate(double const *const *parameters, double *residua
     // F = G(f) f = V(u)
 #endif
 
+
+
+
+
     residual = sqrt_info * residual; //误差乘上信息矩阵
+
+
+
+
+
+
+
+
+
+
 
     // reduce 表示残差residual对pts_camera_j的导数
     //  pts_camera_j = = qic.inverse() * (pts_imu_j - tic)
