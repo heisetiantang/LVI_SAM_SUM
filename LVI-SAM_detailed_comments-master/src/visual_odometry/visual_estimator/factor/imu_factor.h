@@ -82,7 +82,16 @@ class IMUFactor : public ceres::SizedCostFunction<15, 7, 9, 7, 9>
         // 因此需要把P^-1做LLT分解，使d=(L^T r)^T (L^T r) = r'^T r
         Eigen::Matrix<double, 15, 15> sqrt_info = Eigen::LLT<Eigen::Matrix<double, 15, 15>>(pre_integration->covariance.inverse()).matrixL().transpose();
         //sqrt_info.setIdentity();
-        residual = sqrt_info * residual;
+        ROS_INFO("lambda_IMU:%d",lambda_IMU);
+        if (lambda_IMU == 0)  {
+            ROS_INFO("lambda_IMU = 0");
+         residual = sqrt_info * residual;
+       }
+        else
+        {
+            residual = lambda_IMU*sqrt_info * residual;
+        }
+        
 
 
 

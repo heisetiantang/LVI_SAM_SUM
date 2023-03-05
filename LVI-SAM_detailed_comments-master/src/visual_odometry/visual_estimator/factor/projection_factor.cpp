@@ -67,11 +67,20 @@ bool ProjectionFactor::Evaluate(double const *const *parameters, double *residua
     // F = G(f) f = V(u)
 #endif
 
+    // cout<<"lambda_camera"<<en
+    ROS_INFO("lambda_camera: %d", lambda_camera);
+    if (lambda_camera == 0)
+    {
+        ROS_INFO("lambda_camera =0");
+        residual = sqrt_info * residual; 
+    }
+    else
+    {
+        residual =lambda_camera* sqrt_info * residual; //误差乘上信息矩阵
+    }
+    
 
-
-
-
-    residual = sqrt_info * residual; //误差乘上信息矩阵
+    
 
 
 

@@ -8,7 +8,9 @@
 #include <cassert>
 #include <cstring>
 #include <eigen3/Eigen/Dense>
-
+//定义全局变量用于优化协方差矩阵
+extern double lambda_IMU;
+extern double lambda_camera;
 class Utility
 {
   public:

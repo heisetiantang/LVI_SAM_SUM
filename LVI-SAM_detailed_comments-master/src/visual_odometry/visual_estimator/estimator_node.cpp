@@ -44,7 +44,11 @@ double last_imu_t = 0;
 
 
 //***********************
-    double w_fecture =1;//特征跟踪性能权值1/150
+    double lambda_IMU  =0;//IMU因子权值
+    double lambda_camera =0;//相机因子权值
+    //定义一个标志位，用于判断是否重启VIO
+    bool restart_vio = false;
+    double w_fecture =1;//特征跟踪性能权值1
     double w_motion=1;//线速度性能权值1
     double w_angle=1;//角速度性能权值1
     double Scvalue;//计算S值
@@ -52,6 +56,7 @@ double last_imu_t = 0;
     double S_norm = 0;//S值归一化
     std::vector<int> num_tracked_all;//每帧跟踪成功的特征点数
     float  average_track = 0;//平均每个特征点跟踪的次数
+
 
 //**************
 //创建容器保存每帧的跟踪数目
@@ -445,7 +450,15 @@ double yaw = atan2(direction.y(), direction.x()); // 计算yaw角
 //计算Si
 Scvalue = w_fecture*average_track - w_motion*sqrt(delta_x*delta_x + delta_y*delta_y) - w_angle*abs(yaw);
 // cout<<"yaw: "<<yaw<<endl;
-// if (sqrt(delta_x*delta_x + delta_y*delta_y) >){}
+if (sqrt(delta_x*delta_x + delta_y*delta_y) >10){
+    ROS_ERROR("sqrt(delta_x*delta_x + delta_y*delta_y) >10");
+restart_vio = true;
+}
+if (abs(yaw) > 5)
+{
+    ROS_ERROR("abs(yaw) > 5");
+    restart_vio = true;
+}
 
 Estimator_result<<delta_x<<"   ";
 Estimator_result<<delta_y<<"   ";
@@ -455,6 +468,8 @@ Estimator_result<<sqrt(delta_x*delta_x + delta_y*delta_y)<<endl;
 cout<<"average_track: "<<average_track<<endl;
 cout<<"w_motion*sqrt(delta_x*delta_x + delta_y*delta_y)"<<w_motion*sqrt(delta_x*delta_x + delta_y*delta_y)<<endl;
 cout<<"w_angle*abs(yaw)"<<w_angle*abs(yaw)<<endl;
+
+
 }
 else{
    ROS_ERROR("image_status_vector.size() <= 1");
@@ -465,8 +480,6 @@ else{
    return;
 }
 
-
-
 S_norm = Scvalue /( max_track_num/150);//归一化评分
 // cout<<"max_track_num: "<<max_track_num<<endl;
 
@@ -475,27 +488,28 @@ cout<<"S_norm: "<<S_norm<<endl;
 S_result<<Scvalue<<"    ";
 S_result<<S_norm<<endl;
 
+
 S_result.close();
 Estimator_result.close();
-// if (S_norm < 0 )
-// {
-//     ROS_ERROR("S_norm < 0");
-//         ROS_WARN("restart the estimator!");
-//         m_buf.lock();
-//         while(!feature_buf.empty())
-//             feature_buf.pop();
-//         while(!imu_buf.empty())
-//             imu_buf.pop();
-//         m_buf.unlock();
-//         m_estimator.lock();
-//         estimator.clearState();
-//         estimator.setParameter();
-//         m_estimator.unlock();
-//         current_time = -1;
-//         last_imu_t = 0;
-    
-//    return;
-// }
+if (restart_vio)
+{
+    ROS_ERROR("S_norm < 0");
+        ROS_WARN("restart the estimator!");
+        m_buf.lock();
+        while(!feature_buf.empty())
+            feature_buf.pop();
+        while(!imu_buf.empty())
+            imu_buf.pop();
+        m_buf.unlock();
+        m_estimator.lock();
+        estimator.clearState();
+        estimator.setParameter();
+        m_estimator.unlock();
+        current_time = -1;
+        last_imu_t = 0;
+        restart_vio = false;
+   return;
+}
  
 
 
